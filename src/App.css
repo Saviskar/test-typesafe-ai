@@ -1,0 +1,151 @@
+.csv-node,
+.table-view-node,
+.sales-mapping-node,
+.category-mapping-node {
+  width: 320px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 8px;
+  background: var(--bg, #fff);
+  padding: 12px;
+  font-size: 13px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.node-header {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.csv-node input[type='file'] {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.csv-node button,
+.sales-mapping-node button {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border, #ccc);
+  background: #f5f5f5;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.csv-node button:disabled,
+.sales-mapping-node button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.node-error {
+  color: #c0392b;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.node-empty {
+  color: #888;
+  font-size: 12px;
+}
+
+.csv-table-wrapper {
+  max-height: 200px;
+  overflow: auto;
+  border: 1px solid var(--border, #eee);
+  border-radius: 4px;
+}
+
+.csv-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+}
+
+.csv-table th,
+.csv-table td {
+  border: 1px solid var(--border, #eee);
+  padding: 2px 6px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.csv-table th {
+  background: #fafafa;
+  position: sticky;
+  top: 0;
+}
+
+.csv-table-meta {
+  font-size: 11px;
+  color: #888;
+  padding: 4px 6px;
+}
+
+.mapping-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.mapping-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.mapping-field-label {
+  color: #555;
+  font-weight: 500;
+}
+
+.mapping-field select {
+  width: 100%;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border, #ccc);
+  background: #fff;
+  font-size: 12px;
+}
+
+.mapping-field select:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  background: #f5f5f5;
+}
+
+.category-boxes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.category-box {
+  border: 1px solid var(--border, #eee);
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.category-box-label {
+  font-weight: 500;
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 2px;
+}
+
+.category-box-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 11px;
+  max-height: 80px;
+  overflow: auto;
+}
+
+.category-box-empty {
+  color: #aaa;
+}
