@@ -94,5 +94,41 @@ app.post('/api/classify-category', async (req, res) => {
   }
 });
 
+app.post('/api/lookup-match', async (req, res) => {
+  const values: unknown = req.body?.values;
+  const candidates: unknown = req.body?.candidates;
+  if (!Array.isArray(values) || !values.every((v) => typeof v === 'string') || values.length === 0) {
+    res.status(400).json({ error: 'values must be a non-empty string array' });
+    return;
+  }
+  if (!Array.isArray(candidates) || !candidates.every((c) => typeof c === 'string') || candidates.length === 0) {
+    res.status(400).json({ error: 'candidates must be a non-empty string array' });
+    return;
+  }
+
+  const criteria: Record<string, null> = { [NONE_OF_THESE]: null };
+  for (const c of candidates) criteria[c] = null;
+
+  try {
+    const client = getClient();
+    const entries = await Promise.all(
+      values.map(async (value) => {
+        const response = await client.systemOne({
+          state: { value },
+          questions: {
+            match: choice('Which of these lookup keys best matches this value?', criteria),
+          },
+        });
+        const c = response.answers.match.choice;
+        return [value, c === NONE_OF_THESE ? null : c] as const;
+      }),
+    );
+    res.json({ matches: Object.fromEntries(entries) });
+  } catch (err) {
+    console.error('lookup-match failed:', err);
+    res.status(502).json({ error: 'Failed to match lookup values' });
+  }
+});
+
 const PORT = Number(process.env.PORT) || 8787;
 app.listen(PORT, () => console.log(`TypeSafe server listening on :${PORT}`));

@@ -11,6 +11,22 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
+.ai-lookup-node {
+  width: 100%;
+  height: 100%;
+  min-width: 320px;
+  min-height: 220px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 8px;
+  background: var(--bg, #fff);
+  padding: 12px;
+  font-size: 13px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
 .node-header {
   font-weight: 600;
   margin-bottom: 8px;
@@ -24,7 +40,8 @@
 }
 
 .csv-node button,
-.sales-mapping-node button {
+.sales-mapping-node button,
+.ai-lookup-node button {
   padding: 4px 12px;
   border-radius: 4px;
   border: 1px solid var(--border, #ccc);
@@ -34,7 +51,8 @@
 }
 
 .csv-node button:disabled,
-.sales-mapping-node button:disabled {
+.sales-mapping-node button:disabled,
+.ai-lookup-node button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -55,6 +73,12 @@
   overflow: auto;
   border: 1px solid var(--border, #eee);
   border-radius: 4px;
+}
+
+.ai-lookup-node .csv-table-wrapper {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
 }
 
 .csv-table {
