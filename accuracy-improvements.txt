@@ -1,0 +1,63 @@
+HOW TO IMPROVE ACCURACY OF THE COLUMN-MATCHING HELPER
+========================================================
+
+Goal: keep ONE shared helper that works for every node, but make its guesses
+more accurate so people have to step in less often.
+
+
+1. FEED IT BOTH THE COLUMN HEADERS AND THE REAL DATA
+------------------------------------------------------
+Right now the helper mostly looks at column headers (like "SKU" or "Value1").
+A header like "Value1" tells it nothing.
+
+Fix: also show it a few sample values from that column, not just the name.
+A column named "Value1" that contains 2024-03-11, 2024-03-12, 2024-03-14 is
+obviously a date, even though the header is useless. This alone fixes most
+of the "badly named column" problem, with no extra logic needed.
+
+
+2. WHEN TWO COLUMNS LOOK THE SAME TYPE, CHECK HOW THEY BEHAVE ACROSS ROWS
+----------------------------------------------------------------------------
+Problem: sometimes even real data doesn't help. Example: "Quantity Sold" and
+"Reorder Level" are both just small numbers, so they look identical column
+to column.
+
+Fix: write ONE generic check inside the shared helper (not per node) that
+looks at how a column behaves for the same item across multiple rows:
+  - If the value stays the SAME every time for the same item, it's probably
+    a fixed setting (like a reorder level).
+  - If the value CHANGES every time for the same item, it's probably an
+    actual event/transaction number (like quantity sold).
+
+This check is written once, inside the shared helper, and automatically
+helps with ANY similar "is this a fixed setting or a changing value" mix-up
+across all nodes — not just this one example.
+
+
+3. IF TWO FIELDS PICK THE SAME COLUMN, DECIDE TOGETHER INSTEAD OF SEPARATELY
+---------------------------------------------------------------------------------
+Problem: if the helper picks each field's match one at a time, two different
+fields can both end up guessing the same column by accident.
+
+Fix: after all guesses come back, have the helper compare them. Whichever
+guess it was more confident about keeps that column; the other field is
+asked to pick again from what's left. Still one shared piece of logic, not
+something written separately for each node.
+
+
+4. REMEMBER WHAT PEOPLE CONFIRM OR CORRECT
+-----------------------------------------------
+Problem: if the same company/vendor sends files in the same format every
+time, the helper might keep asking the same question over and over.
+
+Fix: once a person confirms or fixes a match for a given file format, save
+that decision. Next time a file from that same source comes in, apply the
+remembered answer automatically instead of asking again.
+
+
+THE HONEST LIMIT
+-------------------
+If a column truly has no useful header AND no useful data (nothing to tell
+it apart from another column), no amount of cleverness can guess it
+correctly. That's exactly what the "please confirm" flag is for — it should
+only show up for genuinely unclear cases, not the easy ones.

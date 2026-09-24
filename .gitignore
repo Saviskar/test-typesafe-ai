@@ -1,25 +1,20 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
 
-node_modules
-dist
-dist-ssr
-*.local
+# Env
 .env
+*.local
+
+# Output files written by cli.py
+samples/*_mapped.csv
+samples/*_categorized.csv
+samples/*_matched.csv
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?

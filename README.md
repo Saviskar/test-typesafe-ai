@@ -1,32 +1,35 @@
-# React + TypeScript + Vite
+# TypeSafe AI CLI
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A CLI for testing how well TypeSafe AI's Jev model performs on three judgments:
+sales-column mapping, item categorization, and fuzzy lookup matching.
 
-Currently, two official plugins are available:
+## Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+pip install -r requirements.txt
+cp .env.example .env   # then fill in TYPESAFE_API_KEY
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Usage
+
+**Map sales columns** — detect which CSV columns are the item ID, quantity, and date:
+
+```sh
+python cli.py map-sales samples/sales.csv
+```
+
+**Classify items into categories** (furniture / vehicles / vegetables / electronics):
+
+```sh
+python cli.py classify-category samples/items.csv --column item_name
+```
+
+**Fuzzy lookup match** — match messy source values against a lookup table:
+
+```sh
+python cli.py lookup-match samples/lookup_source.csv --key-column item \
+    --lookup samples/lookup_candidates.csv --lookup-key name --lookup-value price
+```
+
+Each command prints its result to stdout and writes an output CSV next to the
+input file (`<name>_mapped.csv`, `<name>_categorized.csv`, `<name>_matched.csv`).
