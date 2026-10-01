@@ -1,4 +1,5 @@
-"""TypeSafe AI judgments used by the CLI.
+"""AI judgments used by the CLI, via the provider-agnostic interface in
+providers.py.
 
 Instructions and criteria are ported verbatim from the original server
 (server/index.ts) so results are directly comparable to the earlier UI-backed
@@ -6,13 +7,10 @@ version.
 """
 
 import pandas as pd
-from typesafe_sdk import Choice, TypeSafeClient
 
-# Sentinel criterion offered alongside the real choices so the model can say
-# "none of the above" instead of being forced to pick a wrong answer.
-NONE_OF_THESE = "none_of_these"
+from providers import ChoiceQuestion, Provider, TypeSafeProvider
 
-# One TypeSafe `Choice` question per target field, asked in a single system_one
+# One `Choice` question per target field, asked in a single system_one
 # call. The criteria (candidate CSV headers) are injected per-call in
 # match_sales_columns since they depend on the input file.
 FIELD_INSTRUCTIONS = {
@@ -29,11 +27,6 @@ CATEGORY_CRITERIA = {
     "vegetables": "Vegetables — edible plant-based food items, e.g. cucumber, carrot, onion.",
     "electronics": "Electronics — electronic devices and gadgets, e.g. phones, laptops, TVs.",
 }
-
-
-def _resolve(choice: str) -> str | None:
-    """Turn the NONE_OF_THESE sentinel back into None for callers."""
-    return None if choice == NONE_OF_THESE else choice
 
 
 def _group_key_column(df: pd.DataFrame) -> str | None:
@@ -75,16 +68,15 @@ def _group_constancy_evidence(df: pd.DataFrame) -> dict[str, str]:
     return evidence
 
 
-def match_sales_columns(df: pd.DataFrame) -> dict[str, str | None]:
+def match_sales_columns(df: pd.DataFrame, provider: Provider | None = None) -> dict[str, str | None]:
     """Map each field in FIELD_INSTRUCTIONS to the best-matching column of df.
 
-    Every column is offered as a criterion for every field (plus
-    NONE_OF_THESE), annotated with real sample values and, where available,
-    code-computed evidence of whether it looks like a constant per-item
-    setting or a varying per-transaction value (_group_constancy_evidence) —
-    pure pandas, no AI. A few sample rows are also included in state. All
-    three fields are asked about in one system_one call so the model can
-    consider them together.
+    Every column is offered as a criterion for every field, annotated with
+    real sample values and, where available, code-computed evidence of
+    whether it looks like a constant per-item setting or a varying
+    per-transaction value (_group_constancy_evidence) — pure pandas, no AI. A
+    few sample rows are also included in state. All three fields are asked
+    about in one `choose` call so the model can consider them together.
 
     Returns e.g. {"item_id": "sku", "sales_qty": "qty", "sales_date": None}.
     """
@@ -99,63 +91,48 @@ def match_sales_columns(df: pd.DataFrame) -> dict[str, str | None]:
             description["evidence"] = behavior[header]
         return description
 
-    criteria = {NONE_OF_THESE: None, **{h: describe(h) for h in headers}}
-    with TypeSafeClient() as client:
-        response = client.system_one(
+    criteria = {h: describe(h) for h in headers}
+    questions = {
+        field: ChoiceQuestion(instructions=instructions, criteria=criteria)
+        for field, instructions in FIELD_INSTRUCTIONS.items()
+    }
+    with provider or TypeSafeProvider() as p:
+        return p.choose(
             state={
                 "headers": headers,
                 "sample_rows": df.head(5).astype(str).to_dict(orient="records"),
             },
-            questions={
-                field: Choice(instructions=instructions, criteria=criteria)
-                for field, instructions in FIELD_INSTRUCTIONS.items()
-            },
+            questions=questions,
         )
-    return {field: _resolve(response.choices[field].choice) for field in FIELD_INSTRUCTIONS}
 
 
-def classify_categories(items: list[str]) -> dict[str, str | None]:
+def classify_categories(items: list[str], provider: Provider | None = None) -> dict[str, str | None]:
     """Classify each item into one of CATEGORY_CRITERIA (or None).
 
-    Issues one system_one call per item rather than batching them together,
+    Issues one `choose` call per item rather than batching them together,
     since each item is judged independently against the fixed taxonomy.
     """
-    criteria = {**CATEGORY_CRITERIA, NONE_OF_THESE: None}
+    question = ChoiceQuestion(instructions="Which category best describes this item?", criteria=CATEGORY_CRITERIA)
     results: dict[str, str | None] = {}
-    with TypeSafeClient() as client:
+    with provider or TypeSafeProvider() as p:
         for item in items:
-            response = client.system_one(
-                state={"item": item},
-                questions={
-                    "category": Choice(
-                        instructions="Which category best describes this item?",
-                        criteria=criteria,
-                    ),
-                },
-            )
-            results[item] = _resolve(response.choices["category"].choice)
+            results[item] = p.choose(state={"item": item}, questions={"category": question})["category"]
     return results
 
 
-def lookup_match(values: list[str], candidates: list[str]) -> dict[str, str | None]:
+def lookup_match(values: list[str], candidates: list[str], provider: Provider | None = None) -> dict[str, str | None]:
     """Fuzzy-match each value to the closest candidate string (or None).
 
     This is the "fuzzy VLOOKUP" building block: candidates come from the
     lookup table's key column, and the caller (cli.py) resolves each match
     back to the lookup table's value column.
     """
-    criteria = {NONE_OF_THESE: None, **{c: None for c in candidates}}
+    question = ChoiceQuestion(
+        instructions="Which of these lookup keys best matches this value?",
+        criteria={c: None for c in candidates},
+    )
     results: dict[str, str | None] = {}
-    with TypeSafeClient() as client:
+    with provider or TypeSafeProvider() as p:
         for value in values:
-            response = client.system_one(
-                state={"value": value},
-                questions={
-                    "match": Choice(
-                        instructions="Which of these lookup keys best matches this value?",
-                        criteria=criteria,
-                    ),
-                },
-            )
-            results[value] = _resolve(response.choices["match"].choice)
+            results[value] = p.choose(state={"value": value}, questions={"match": question})["match"]
     return results

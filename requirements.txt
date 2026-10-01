@@ -1,3 +1,5 @@
 typesafe-sdk
 pandas
 python-dotenv
+anthropic
+google-genai
