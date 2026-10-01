@@ -1,9 +1,12 @@
-"""CLI for testing TypeSafe AI's Jev model against three use cases:
-sales-column mapping, item categorization, and fuzzy lookup matching.
+"""CLI for testing AI models against three use cases: sales-column mapping,
+item categorization, and fuzzy lookup matching. Defaults to TypeSafe AI;
+--provider selects a different backend to evaluate (see providers.py).
 
 Usage:
     python cli.py map-sales samples/sales.csv
-    python cli.py classify-category samples/items.csv --column item_name
+    python cli.py map-sales samples/sales.csv --provider anthropic --model claude-haiku-4-5-20251001
+    python cli.py map-sales samples/sales.csv --provider ollama --model llama3.1
+    python cli.py classify-category samples/items.csv --column item_name --provider gemini
     python cli.py lookup-match samples/lookup_source.csv --key-column item \\
         --lookup samples/lookup_candidates.csv --lookup-key name --lookup-value price
 """
@@ -14,6 +17,7 @@ from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 
+from providers import get_provider
 from tasks import classify_categories, lookup_match, match_sales_columns
 
 # Canonical column names the sales-mapping output is normalized to, regardless
@@ -36,7 +40,7 @@ def cmd_map_sales(args: argparse.Namespace) -> None:
     csv_path = Path(args.csv)
     df = pd.read_csv(csv_path)
 
-    mapping = match_sales_columns(df)
+    mapping = match_sales_columns(df, provider=get_provider(args.provider, args.model))
     print("Detected mapping:")
     for field in SALES_FIELDS:
         print(f"  {field}: {mapping[field] or '(no match)'}")
@@ -64,7 +68,7 @@ def cmd_classify_category(args: argparse.Namespace) -> None:
 
     # Classify only the distinct values once, then map back onto every row.
     items = df[args.column].dropna().unique().tolist()
-    categories = classify_categories(items)
+    categories = classify_categories(items, provider=get_provider(args.provider, args.model))
 
     print("Classified items:")
     counts: dict[str, int] = {}
@@ -111,7 +115,7 @@ def cmd_lookup_match(args: argparse.Namespace) -> None:
     # Match only the distinct values once; lookup_match does the fuzzy AI matching.
     values = source_df[args.key_column].dropna().unique().tolist()
     candidates = lookup_df[args.lookup_key].dropna().unique().tolist()
-    matches = lookup_match(values, candidates)
+    matches = lookup_match(values, candidates, provider=get_provider(args.provider, args.model))
 
     value_to_result = lookup_df.set_index(args.lookup_key)[args.lookup_value].to_dict()
     output_column = _output_column_name(list(source_df.columns), args.lookup_value)
@@ -140,19 +144,36 @@ def cmd_lookup_match(args: argparse.Namespace) -> None:
 def build_parser() -> argparse.ArgumentParser:
     """Wire up the three subcommands (map-sales, classify-category,
     lookup-match) to their cmd_* handlers above."""
-    parser = argparse.ArgumentParser(description="Test TypeSafe AI's Jev model against sample CSV data.")
+    parser = argparse.ArgumentParser(description="Test AI models against sample CSV data.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    map_sales = subparsers.add_parser("map-sales", help="Auto-map sales columns (item_id/sales_qty/sales_date)")
+    # Shared --provider/--model flags, added to every subcommand below so any
+    # task can be pointed at a different backend for evaluation.
+    provider_args = argparse.ArgumentParser(add_help=False)
+    provider_args.add_argument(
+        "--provider",
+        default="typesafe",
+        choices=["typesafe", "anthropic", "gemini", "ollama"],
+        help="AI backend to use (default: typesafe)",
+    )
+    provider_args.add_argument("--model", help="Override the provider's default model")
+
+    map_sales = subparsers.add_parser(
+        "map-sales", parents=[provider_args], help="Auto-map sales columns (item_id/sales_qty/sales_date)"
+    )
     map_sales.add_argument("csv")
     map_sales.set_defaults(func=cmd_map_sales)
 
-    classify_category = subparsers.add_parser("classify-category", help="Classify items into categories")
+    classify_category = subparsers.add_parser(
+        "classify-category", parents=[provider_args], help="Classify items into categories"
+    )
     classify_category.add_argument("csv")
     classify_category.add_argument("--column", required=True, help="Column containing item names")
     classify_category.set_defaults(func=cmd_classify_category)
 
-    lookup = subparsers.add_parser("lookup-match", help="Fuzzy VLOOKUP: match source values against a lookup table")
+    lookup = subparsers.add_parser(
+        "lookup-match", parents=[provider_args], help="Fuzzy VLOOKUP: match source values against a lookup table"
+    )
     lookup.add_argument("csv", help="Source CSV")
     lookup.add_argument("--key-column", required=True, help="Column in the source CSV to match")
     lookup.add_argument("--lookup", required=True, help="Lookup table CSV")
